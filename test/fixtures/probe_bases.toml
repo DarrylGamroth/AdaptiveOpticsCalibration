@@ -1,0 +1,67 @@
+schema = "test.adaptive-optics-calibration/probe-bases/1"
+source_repository = "JuliaFilterGraph.jl"
+source_revision = "7e9587b3ea059fe2271973a92b182c31b211c25b"
+source_path = "fixtures/algorithms/calibration_probe.toml"
+source_sha256 = "b0fdaf1f5650c6c8c12e20a6413213ab00f607b91dd8ef33d36d7fa61c80da8b"
+upstream_fgn_revision = "3d49237b3c9f4423f120b52bd2761cd5a90f5e94"
+
+# Command matrices are serialized row-major. Rows are interleaved positive and
+# negative exposures; columns are corrector coordinates.
+[modal]
+pattern_count = 2
+corrector_coordinate_count = 3
+positive_commands = [0.5, -1.0, 0.0, -0.25, 0.5, 2.0]
+expected_commands = [
+    0.5, -1.0, 0.0,
+    -0.5, 1.0, -0.0,
+    -0.25, 0.5, 2.0,
+    0.25, -0.5, -2.0,
+]
+expected_bits = [
+    1056964608, 3212836864, 0,
+    3204448256, 1065353216, 2147483648,
+    3196059648, 1056964608, 1073741824,
+    1048576000, 3204448256, 3221225472,
+]
+
+[zonal]
+pattern_count = 2
+corrector_coordinate_count = 2
+amplitudes = [1.0, 2.0]
+expected_commands = [
+    1.0, 0.0,
+    -1.0, 0.0,
+    0.0, 2.0,
+    0.0, -2.0,
+]
+expected_bits = [
+    1065353216, 0,
+    3212836864, 0,
+    0, 1073741824,
+    0, 3221225472,
+]
+
+[hadamard]
+pattern_count = 4
+corrector_coordinate_count = 3
+amplitudes = [1.0, 2.0, 3.0]
+expected_commands = [
+    1.0, 2.0, 3.0,
+    -1.0, -2.0, -3.0,
+    -1.0, 2.0, -3.0,
+    1.0, -2.0, 3.0,
+    1.0, -2.0, -3.0,
+    -1.0, 2.0, 3.0,
+    -1.0, -2.0, 3.0,
+    1.0, 2.0, -3.0,
+]
+expected_bits = [
+    1065353216, 1073741824, 1077936128,
+    3212836864, 3221225472, 3225419776,
+    3212836864, 1073741824, 3225419776,
+    1065353216, 3221225472, 1077936128,
+    1065353216, 3221225472, 3225419776,
+    3212836864, 1073741824, 1077936128,
+    3212836864, 3221225472, 1077936128,
+    1065353216, 1073741824, 3225419776,
+]

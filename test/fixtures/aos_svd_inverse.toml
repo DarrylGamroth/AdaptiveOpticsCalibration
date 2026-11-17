@@ -1,0 +1,99 @@
+schema = "test.adaptive-optics-sim/svd-inverse/1"
+source_repository = "AdaptiveOpticsSim.jl"
+source_revision = "378ee3dfb6bb45812a240ac58f3d3f204a9fc4fa"
+source_paths = [
+    "src/calibration/inverse_policies.jl",
+    "src/calibration/control_matrix.jl",
+]
+source_test_path = "test/testsets/control_reconstruction.jl"
+measurement_count = 4
+corrector_coordinate_count = 4
+matrix_order = "row-major"
+spectral_gains_provenance = "derived from the source equations and recorded source singular values"
+interaction_matrix = [
+    3.0, 1.0, 0.0, 0.0,
+    1.0, 3.0, 0.0, 0.0,
+    0.0, 0.0, 0.001, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+]
+expected_singular_values = [4.000000000000001, 1.9999999999999996, 0.001, 0.0]
+absolute_tolerance_f64 = 2.0e-12
+
+[exact]
+expected_spectral_gains = [0.25, 0.5, 1000.0, 0.0]
+expected_reconstructor = [
+    0.37500000000000006, -0.12500000000000006, 0.0, 0.0,
+    -0.12500000000000003, 0.37499999999999994, 0.0, 0.0,
+    0.0, 0.0, 1000.0, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+]
+expected_effective_rank = 3
+expected_condition_number = 4000.000000000001
+expected_truncation_count = 0
+
+[tsvd_tolerance]
+rtol = 0.001
+atol = 0.0
+n_trunc = 0
+expected_spectral_gains = [0.25, 0.5, 0.0, 0.0]
+expected_reconstructor = [
+    0.37500000000000006, -0.12500000000000006, 0.0, 0.0,
+    -0.12500000000000003, 0.37499999999999994, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+]
+expected_effective_rank = 2
+expected_condition_number = 2.000000000000001
+expected_truncation_count = 2
+
+[tsvd_explicit]
+rtol = 0.0
+atol = 0.0
+n_trunc = 2
+expected_spectral_gains = [0.25, 0.0, 0.0, 0.0]
+expected_reconstructor = [
+    0.125, 0.12499999999999994, 0.0, 0.0,
+    0.125, 0.12499999999999994, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+]
+expected_effective_rank = 1
+expected_condition_number = 1.0
+expected_truncation_count = 3
+
+[tikhonov]
+lambda = 0.5
+rtol = 0.0
+atol = 0.0
+expected_spectral_gains = [
+    0.2461538461538462,
+    0.47058823529411764,
+    0.003999984000064,
+    0.0,
+]
+expected_reconstructor = [
+    0.35837104072398196, -0.11221719457013579, 0.0, 0.0,
+    -0.11221719457013578, 0.35837104072398185, 0.0, 0.0,
+    0.0, 0.0, 0.003999984000064, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+]
+expected_effective_rank = 3
+expected_condition_number = 8.000000000000002
+expected_truncation_count = 0
+
+[zero_lambda_divergence]
+lambda = 0.0
+rtol = 0.0
+atol = 0.0
+source_behavior = "all-NaN reconstructor from a NaN null-space gain"
+target_behavior = "finite pseudoinverse with a zero null-space gain"
+expected_spectral_gains = [0.25, 0.5, 1000.0, 0.0]
+expected_reconstructor = [
+    0.37500000000000006, -0.12500000000000006, 0.0, 0.0,
+    -0.12500000000000003, 0.37499999999999994, 0.0, 0.0,
+    0.0, 0.0, 1000.0, 0.0,
+    0.0, 0.0, 0.0, 0.0,
+]
+expected_effective_rank = 3
+expected_condition_number = inf
+expected_truncation_count = 0
