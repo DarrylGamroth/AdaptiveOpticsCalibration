@@ -1123,6 +1123,8 @@ function test_accelerator_lift(backend, to_device, device_array_type)
 end
 
 
+include("srt_cpu_inputs.jl")
+
 const ACCELERATOR_TEST_DOMAINS = (
     "tomography", "gain", "structured", "probes", "stability", "lift",
 )
@@ -1131,6 +1133,7 @@ function run_accelerator_tests(
     backend, to_device, device_array_type; phase_retrieval=false, domain=nothing,
 )
     if domain === nothing
+        test_srt_cpu_inputs(to_device)
         test_accelerator_tomography_covariance(backend, to_device, device_array_type)
         test_accelerator_covariance_reconstructor(backend, to_device, device_array_type)
         test_accelerator_gain_sensing_frozen(backend, to_device, device_array_type)

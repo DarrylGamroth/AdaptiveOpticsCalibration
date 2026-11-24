@@ -50,7 +50,11 @@ function ConditioningCriteria(
     )
 end
 
-"""Dimensions and representation of a batch DO-CRIME solve."""
+"""
+Dimensions of a DO-CRIME covariance reduction or solve. The element type `T`
+selects the solve representation. [`CenteredCovariance`](@ref) always
+accumulates in Float64.
+"""
 struct CovarianceSpecification{T<:AbstractFloat}
     measurement_count::Int
     corrector_coordinate_count::Int

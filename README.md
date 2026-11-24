@@ -7,16 +7,18 @@ Add the public release directly from Julia's package manager.
 ```julia
 using Pkg
 Pkg.add(url="https://github.com/DarrylGamroth/AdaptiveOpticsCalibration.git",
-        rev="v0.17.5")
+        rev="v0.17.6")
 ```
 
 
 `AdaptiveOpticsCalibration.jl` is a transport-independent numerical toolbox
 for adaptive-optics calibration and commissioning.
 
-The package is intended to become the scientific owner of reusable calibration
-methods shared by simulation, SRT/commissioning workflows, and bounded RTC
-adapters. It deliberately does not contain a graph engine.
+The package supplies numerical methods shared by simulation, soft-real-time
+calibration workers, commissioning workflows, and bounded RTC adapters.
+
+The [soft-real-time calibration guide](docs/SOFT_REALTIME_CALIBRATION.md)
+lists the CPU methods, instrument worker entry points, and replay evidence.
 
 ## Interface
 
@@ -274,7 +276,7 @@ following families, with additional accelerator targets noted below:
 - interaction-matrix estimation from complete zonal and balanced Hadamard
   response cycles;
 - complete modal, zonal, balanced Hadamard and spatial sine/cosine probe command bases;
-- weighted core image intensity, SPSA probe/gradient operations and explicit-state Adam steps;
+- weighted core image intensity, SPSA probe/gradient operations, explicit-state Adam steps and quadratic modal scan fits;
 - sampled influence-function eigenbases, finite-corrector atmospheric
   Karhunen–Loève bases, pure modal fitting diagnostics, and explicit modal OPD
   expansion;
@@ -283,7 +285,11 @@ following families, with additional accelerator targets noted below:
 - interaction-matrix stability diagnostics; and
 - complete-batch and explicit-state dark mean/unbiased variance, lamp centroid
   references and normalized pyramid pixel/modal references;
-- open- and closed-loop batch DO-CRIME covariance solves;
+- incremental centered DO-CRIME covariance and open- and closed-loop solves;
+- complete-window temporal dither gain and phase estimation;
+- one-sided modal power spectra and delay-aware integrator gains with predicted
+  residual variance and gain margin
+  ([held-out replay](docs/SOFT_REALTIME_CALIBRATION.md#temporal-gain-selection-on-held-out-modal-opd))
 - complete-image gain sensing with a CPU reference and CUDA/AMDGPU execution
   against frozen AOS parity; and
 - CPU meta-sensitivity misregistration estimation, explicit-coordinate
@@ -300,11 +306,12 @@ path uses the AOS scalar approximation from revision `b4d2da2`. This path
 does not derive optical geometry, perform fit-source weighting or a GPU solve,
 or claim graph capture or zero allocation.
 
-These operations are calibration-time batch algorithms. They do not acquire
-detector frames, sequence equipment, publish artifacts, or run an RTC graph.
-The gain-sensing method consumes complete frames only. Forming physical
-camera/modulation images remains in AOS; FGA's live dither-window estimator is
-a distinct real-time demodulation contract.
+Soft-real-time callers can update reference and covariance state on associated
+samples or process fixed observation windows on a calibration worker. Use an
+independent workspace and result for each concurrent operation. PipeWireAORTC
+or the composing SRT owns exposure association, scheduling and activation.
+See [soft-real-time calibration](docs/SOFT_REALTIME_CALIBRATION.md) for usage,
+accuracy comparisons and qualification work.
 
 An optional KernelAbstractions extension provides backend execution for
 structured interaction-matrix estimation, probe-basis construction,

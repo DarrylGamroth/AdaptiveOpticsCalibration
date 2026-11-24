@@ -22,7 +22,10 @@ include("tomography/tomography.jl")
 include("phase_retrieval/phase_retrieval.jl")
 include("docrime/docrime.jl")
 include("optical_gains/optical_gains.jl")
+include("modal_gain_optimization/modal_gain_optimization.jl")
 include("reference_frames/reference_frames.jl")
+include("shack_hartmann/shack_hartmann.jl")
+include("atmospheric_parameters/atmospheric_parameters.jl")
 include("focal_plane_sharpening/focal_plane_sharpening.jl")
 
 export AbstractCalibrationMethod, AbstractCalibrationPlan, KernelExecution
@@ -33,7 +36,10 @@ export Reconstructors, Misregistration, PhaseRetrieval
 export Tomography
 export DOCRIME
 export OpticalGains
+export ModalGainOptimization
 export ReferenceFrames
+export ShackHartmann
+export AtmosphericParameters
 export FocalPlaneSharpening
 
 end

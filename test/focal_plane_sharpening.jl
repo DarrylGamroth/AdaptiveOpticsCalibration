@@ -25,6 +25,86 @@ Base.size(v::SharpeningZeroVector) = size(v.values)
 Base.axes(v::SharpeningZeroVector) = (0:(length(v.values) - 1),)
 Base.getindex(v::SharpeningZeroVector, i::Int) = v.values[i + 1]
 
+function modal_scan_allocations(result, plan, metrics)
+    process!(result, nothing, plan, metrics)
+    return @allocated process!(result, nothing, plan, metrics)
+end
+
+@testset "modal amplitude scan" begin
+    malformed = ModalScanPlan([-1., 0., 1.], [-1., 0., 1.], zeros(0, 0),
+        0., 1., -1., 1., 1.)
+    @test_throws DimensionMismatch process(malformed, [1., 3., 1.])
+    amplitudes = [2., -2., 0., 1., 0., -1.]
+    metrics = 7 .- 2 .* (amplitudes .- 0.25) .^ 2
+    plan = prepare(ModalScan(), ModalScanSpecification(view(amplitudes, :)))
+    fill!(amplitudes, NaN)
+    result = process(plan, view(metrics, :))
+    @test result.status == FocalPlaneSharpening.Valid
+    @test result.best_sample_index == 3
+    @test result.best_sample_amplitude == 0
+    @test result.best_sample_metric == 6.875
+    @test result.peak_amplitude ≈ 0.25 atol=5e-15
+    @test result.residual_rms ≈ 0 atol=1e-13
+    @test allocate_workspace(plan) === nothing
+    @test modal_scan_allocations(result, plan, metrics) == 0
+    @test modal_scan_allocations(result, plan, view(metrics, :)) == 0
+
+    # Opposite perturbations at the two repetitions leave the fit invariant.
+    noisy = copy(metrics)
+    noisy[3] += 0.5
+    noisy[5] -= 0.5
+    @test process!(result, plan, noisy) === result
+    @test result.peak_amplitude ≈ 0.25 atol=5e-15
+    @test result.residual_rms ≈ sqrt(2 * 0.5^2 / length(metrics)) atol=1e-13
+    @test result.best_sample_metric == 7.375
+    shifted = process(plan, noisy .+ 2.0^40)
+    @test shifted.status == result.status
+    @test shifted.peak_amplitude == result.peak_amplitude
+    @test shifted.residual_rms == result.residual_rms
+    @test shifted.best_sample_metric - 2.0^40 == result.best_sample_metric
+
+    # A tie retains the first sample, even when amplitudes are out of order.
+    short = prepare(ModalScan(), ModalScanSpecification([1, -1, 0]))
+    tied = process(short, [1, -1, 1])
+    @test tied.status == FocalPlaneSharpening.Valid
+    @test tied.peak_amplitude ≈ 0.5 atol=5e-15
+    @test tied.best_sample_index == 1
+    offset = 2.0^45
+    translated = prepare(ModalScan(), ModalScanSpecification(offset .+ [1, -1, 0]))
+    @test process(translated, [1, -1, 1]).peak_amplitude == offset + 0.5
+    tiny = nextfloat(0.0)
+    tiny_plan = prepare(ModalScan(), ModalScanSpecification([0, tiny, 2tiny]))
+    @test process(tiny_plan, [1, 3, 1]).peak_amplitude == tiny
+
+    for (values, expected) in (([1, 1, 1], UnresolvedCurvature),
+            ([1, -1, 0], UnresolvedCurvature),
+            ([1., -1., 8eps(Float64)], UnresolvedCurvature),
+            ([nextfloat(1.), 1., 1.], UnresolvedCurvature),
+            ([1, 1, 0], NonconcaveFit), ([3, -5, 0], UnbracketedPeak),
+            ([0, -4, -1], UnbracketedPeak))
+        process!(tied, short, values)
+        @test tied.status == expected
+        @test tied.peak_amplitude === nothing
+        @test tied.residual_rms ≈ 0 atol=1e-13
+    end
+    extreme = floatmax(Float64)
+    @test process!(tied, short, [extreme, -extreme, 0.]).status == NumericalFailure
+    @test tied.best_sample_metric == extreme
+    @test tied.peak_amplitude === tied.residual_rms === nothing
+    @test process!(tied, short, [0, 0, 1]).status == FocalPlaneSharpening.Valid
+
+    for invalid in ([1., 2.], [1., 1., 1.], [1., 2., 1.], [0., eps()/8, 1.],
+                    [0., 1., Inf], [0., 1., NaN], SharpeningZeroVector([0., 1., 2.]))
+        @test_throws ArgumentError prepare(ModalScan(), ModalScanSpecification(invalid))
+    end
+    @test_throws DimensionMismatch process!(tied, short, [1, 2])
+    @test_throws ArgumentError process!(tied, short, [1, 2, NaN])
+    @test_throws ArgumentError process!(tied, short, [1, 2, Inf])
+    @test_throws ArgumentError process!(tied, short, SharpeningZeroVector([1., 2., 3.]))
+    @test tied.status == FocalPlaneSharpening.Valid
+    @test tied.best_sample_amplitude == 0
+end
+
 @testset "weighted core intensity" begin
     @test_throws ArgumentError WeightedCoreIntensity(0)
     @test_throws ArgumentError WeightedCoreIntensity(Inf)

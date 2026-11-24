@@ -1,15 +1,16 @@
 """
     DOCRIME
 
-Complete-batch covariance-to-interaction-matrix estimation for open- and
-closed-loop DO-CRIME system identification. Covariance accumulation and
-per-frame excitation belong to the calling workflow or RTC implementation.
+Centered covariance reduction and covariance-to-interaction-matrix estimation
+for open- and closed-loop DO-CRIME system identification. The caller supplies
+exposure-associated samples and chooses when to freeze a covariance window.
 """
 module DOCRIME
 
 import ..AdaptiveOpticsCalibration:
     AbstractCalibrationMethod,
     AbstractCalibrationPlan,
+    _any_cross_alias,
     _checked_extent,
     allocate_result,
     allocate_workspace,
@@ -17,8 +18,10 @@ import ..AdaptiveOpticsCalibration:
     process!
 
 include("interaction_matrix.jl")
+include("covariance.jl")
 
 export ConditioningCriteria, CovarianceSpecification, CovarianceSums
+export CenteredCovariance, CovariancePlan, CovarianceSample, CovarianceState, CovarianceWorkspace
 export OpenLoop, ClosedLoop, InteractionMatrixPlan
 export InteractionMatrixStatus, Valid, InsufficientSamples
 export InsufficientCorrectorVariance, ExcessiveCorrectorCorrelation

@@ -1,3 +1,17 @@
+_has_cpu_storage(::Union{Array,BitArray,AbstractRange}) = true
+function _has_cpu_storage(array::AbstractArray)
+    storage = parent(array)
+    return storage !== array && storage isa AbstractArray && _has_cpu_storage(storage)
+end
+
+function _require_cpu_arrays(arrays...)
+    Base.require_one_based_indexing(arrays...)
+    all(_has_cpu_storage, arrays) || throw(ArgumentError(
+        "expected CPU arrays, ranges, or wrappers backed by CPU array storage",
+    ))
+    return nothing
+end
+
 function _checked_extent(name::AbstractString, factors::Integer...)
     extent = 1
     try

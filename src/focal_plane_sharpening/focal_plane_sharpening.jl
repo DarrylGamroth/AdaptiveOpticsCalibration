@@ -1,28 +1,42 @@
 """
-Pure scalar CPU image objectives, supplied SPSA probe pairs and gradients, and
-explicit-state Adam steps. One-based ordinary arrays and views are supported.
-The caller owns coefficient order, homogeneous units, measurement association,
-equipment, acceptance, and optimizer history.
+Pure scalar CPU image objectives, modal scans, supplied SPSA probe pairs and
+gradients, and explicit-state Adam steps. One-based ordinary arrays and views
+are supported. The caller owns coefficient order, homogeneous units,
+measurement association, equipment, acceptance, and optimizer history.
 """
 module FocalPlaneSharpening
+
+using LinearAlgebra: Diagonal, svd
 
 import ..AdaptiveOpticsCalibration: AbstractCalibrationMethod,
     AbstractCalibrationPlan, _checked_extent, prepare, process!,
     allocate_result, allocate_workspace
 
 export SharpeningStatus, Valid, NumericalFailure, LostPerturbation
+export UnresolvedCurvature, NonconcaveFit, UnbracketedPeak
 export WeightedCoreIntensity, ImageSpecification, WeightedCorePlan
 export WeightedCoreProduct, WeightedCoreWorkspace
+export ModalScan, ModalScanSpecification, ModalScanPlan, ModalScanProduct
 export CoefficientSpecification, SPSAProbes, SPSAProbePlan, SPSAProbeInputs
 export SPSAProbeProduct, SPSAGradient, SPSAGradientPlan, SPSAGradientInputs
 export SPSAGradientProduct, AdamStep, AdamPlan, AdamState, AdamInputs
 export AdamProduct, AdamWorkspace
 
 """Numerical outcome; structural and nonfinite input errors throw before writes."""
-@enum SharpeningStatus::UInt8 Valid NumericalFailure LostPerturbation
+@enum SharpeningStatus::UInt8 begin
+    Valid
+    NumericalFailure
+    LostPerturbation
+    UnresolvedCurvature
+    NonconcaveFit
+    UnbracketedPeak
+end
 @doc "A complete finite numerical product; acceptance remains caller-owned." Valid
-@doc "Finite inputs overflowed the Float64 numerical calculation; outputs are zeroed." NumericalFailure
+@doc "Finite inputs overflowed the Float64 numerical calculation. See the product for available diagnostics." NumericalFailure
 @doc "An SPSA probe is unchanged in the supplied coefficient's floating precision; outputs are zeroed." LostPerturbation
+@doc "The modal scan quadratic coefficient is within its Float64 roundoff guard." UnresolvedCurvature
+@doc "The modal scan quadratic opens upward." NonconcaveFit
+@doc "The modal scan quadratic peak lacks sampled amplitudes on both sides at working precision." UnbracketedPeak
 
 """
     CoefficientSpecification(count)
@@ -75,6 +89,7 @@ function _positive(x::Real, name::String)
 end
 
 include("weighted_core_intensity.jl")
+include("modal_scan.jl")
 include("spsa.jl")
 include("adam.jl")
 

@@ -14,8 +14,11 @@ references and selected additions. It is not instrument qualification evidence.
 | Spatial sine/cosine modes | Scalar CPU probe construction implemented and package-tested | Explicit actuator positions, reciprocal-coordinate spatial frequencies, amplitudes and normalization. Distinct from temporal sine modulation/demodulation. Incomplete modal probes do not identify a full physical-coordinate matrix. |
 | Dark/reference windows | `ReferenceFrames` implemented and package-tested | Float64 dark means/unbiased variances; mean individual absolute deployed centroids; declared per-ROI all-valid/minimum-flux and global ADC-rail diagnostics. Association and acceptance remain caller-owned. |
 | Sensorless sharpening | Scalar CPU numerical operations implemented and package-tested | SPIDERS-compatible image merit, supplied SPSA probe pair/gradient and explicit-state Adam step. No live equipment callback or optimization campaign in the numerical package. |
-| DOCRIME | Covariance-based numerical estimators implemented | Acquisition, excitation, delays and covariance accumulation need an instrument-specific declared procedure. Not currently selected by the deployed Classic campaign. |
-| Optical gain | Complete-image gain sensing implemented | Supplied reference/current frames and modal basis; separate from temporal carrier demodulation and controller gain optimization. |
+| DO-CRIME | Incremental centered covariance and open/closed-loop matrix solves | The instrument selects excitation, exposure delay and observation window. |
+| Shack–Hartmann threshold and centroid weights | Active-peak median threshold and optionally Gaussian-smoothed weight maps | Use per-exposure peaks for the threshold and window-averaged calibrated spots for the dimensionless maps. |
+| Optical gain | Image-based gain sensing, temporal dither response and bounded correction update | The update uses a path-specific complex reference and explicitly supplied prior correction. It holds the prior when the dither estimate fails its validity checks. |
+| Atmospheric parameters | Profile fit for r₀ and L₀ | Fit measured, noise-corrected modal OPD variances against reference templates in the same basis. The profile reports which outer scales are consistent with the declared tolerance. |
+| Modal controller gains | One-sided PSD estimation and delay-aware integrator gain selection | Independent open-loop and noise-only modal records give a residual variance prediction and gain margin for each selected gain. |
 | Misregistration | Complete-data meta-sensitivity estimator implemented | Supplied response matrices and ordered sensitivities; RTC/plant acquisition and physical parameter interpretation remain outside AOC. |
 | LiFT | Iterative focal-plane phase retrieval implemented | Requires a supplied forward model and conventions; distinct from optimizing an image-sharpness metric. |
 | Reconstructors | SVD, Tikhonov, covariance-weighted MAP and stroke-weighted methods implemented | Require accepted input matrices, covariances, priors, coordinates and numerical policy. They do not validate an interaction acquisition by themselves. |
@@ -61,13 +64,12 @@ Inspected repository revision `66a6087f7c4dbb7197468c43c9259d3e8b0350d3`.
   Instrument command normalization is separate from a transport-neutral basis
   definition.
 - [Eye Doctor handbook](https://magao-x.org/docs/handbook/operating/software/utils/eyedoctor.html)
-  describes mode-wise focal-plane scans and quadratic fitting. This is a
-  documented workflow; no extracted implementation or hardware qualification
-  is established here.
-- [Modal PSD processing](https://github.com/magao-x/MagAOX/blob/66a6087f7c4dbb7197468c43c9259d3e8b0350d3/apps/modalGainOpt/modalPsdProcessor.hpp)
-  offers noise-floor and disturbance-spectrum methods for future temporal gain
-  optimization. PSD units, frequency axes and spectral sampling need their own
-  contract; modal PSD statistics are not pixel dark statistics.
+  describes mode-wise focal-plane scans and quadratic fitting. AOC provides the
+  numerical fit over a supplied scan.
+- MagAO-X supports estimating a noise floor from modal telemetry. AOC uses an
+  independent noise-only exposure series, estimates the disturbance spectrum
+  and selects a gain per mode under an explicit delay and stability margin.
+  [MagAO-X modal PSD processing](https://github.com/magao-x/MagAOX/blob/66a6087f7c4dbb7197468c43c9259d3e8b0350d3/apps/modalGainOpt/modalPsdProcessor.hpp)
 
 MagAO-X repository code is GPL-3.0; numerical equations and cited descriptions
 can guide independent implementations, but copying code requires license
@@ -93,13 +95,13 @@ toolkit options. Existing numerical implementations above should be reused;
 their presence does not mean every method is exposed or qualified by an RTC
 recipe. Keep the spatial excitation basis separate from its temporal schedule:
 a Fourier sine/cosine mode can be measured with signed push–pull steps or,
-with a separately implemented estimator, temporal sinusoidal modulation.
+with a temporal dither response estimator, sinusoidal modulation.
 
 | Option | Intended use and remaining integration |
 | --- | --- |
 | Sequential push–pull | Retain the full-matrix baseline and compare amplitude sensitivity, repeatability and held-out loop behavior. |
 | Hadamard push–pull | Reuse existing probe/decoding methods; compare equal precision and command constraints, not only pattern count. A multiplexed pattern must remain in the WFS linear regime. |
-| Temporal sine probes | Future carrier generation and demodulation for response/dynamics or optical-gain tracking; specify sample rate, frequency, phase, settling, latency and averaging explicitly. |
+| Temporal sine probes | AOC fits the temporal response in a supplied regular window. The caller supplies carrier generation, cadence, settling and exposure association. |
 | Model-assisted updates | Reuse applicable sensitivity estimators with a validated model and selected measured responses; qualify registration and optical-gain updates separately from full-matrix acquisition. |
 
 Push–pull is a central response difference, not a guarantee of the most accurate
@@ -119,10 +121,10 @@ time; GPU acquisition is a backend choice rather than a calibration method.
 2. Qualify each chosen method through completion-driven commanded/adopted
    probes and actual detector observations. Do not replace the measured zonal
    baseline merely because another basis uses fewer or multiplexed patterns.
-3. Consider Eye Doctor-style modal scanning as another separate optimizer once
-   the image metric, command coordinates and noise policy are accepted.
-4. Temporal lock-in/SPRINT and PSD gain optimization remain documented future
-   candidates. User selection in this increment is spatial sine/cosine modes.
+3. Validate modal scan fits with measured image merits and calibrated command coordinates.
+4. Compare temporal SPRINT tracking and extend the synthetic modal-gain
+   replay to instrument telemetry. The held-out gain and residual variance
+   measurements are in the [soft-real-time calibration results](SOFT_REALTIME_CALIBRATION.md).
 
 Scientific suitability, noise efficiency, convergence, throughput and safe
 physical operation are not inferred from another project's source or docs.

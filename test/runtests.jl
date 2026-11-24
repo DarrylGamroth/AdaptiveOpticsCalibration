@@ -16,6 +16,10 @@ include("tomography.jl")
 include("phase_retrieval.jl")
 include("docrime.jl")
 include("optical_gains.jl")
+include("optical_gain_update.jl")
+include("shack_hartmann.jl")
+include("atmospheric_parameters.jl")
+include("modal_gain_optimization.jl")
 include("reference_frames.jl")
 include("reference_frame_state.jl")
 include("pyramid_reference.jl")
@@ -130,7 +134,10 @@ end
         AdaptiveOpticsCalibration.PhaseRetrieval,
         AdaptiveOpticsCalibration.DOCRIME,
         AdaptiveOpticsCalibration.OpticalGains,
+        AdaptiveOpticsCalibration.ModalGainOptimization,
         AdaptiveOpticsCalibration.ReferenceFrames,
+        AdaptiveOpticsCalibration.ShackHartmann,
+        AdaptiveOpticsCalibration.AtmosphericParameters,
         AdaptiveOpticsCalibration.FocalPlaneSharpening,
     )
         for name in names(module_)

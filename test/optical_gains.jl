@@ -272,4 +272,149 @@ end
     @test all(==(23.0), gain_view)
 end
 
+@testset "modal dither response over fractional cycles with DC offsets" begin
+    sample_rate = 128.0
+    samples = 0:46
+    frequencies = [5.2, 9.7]
+    frame_times = 4096 .+ samples ./ sample_rate
+    command_phases = [0.37, -0.82]
+    command_amplitudes = [0.75, 1.25]
+    gains = [1.5, 0.35]
+    phase_lags = [0.41, -0.79]
+    angles = [2π * (f / sample_rate) * n for n in samples, f in frequencies]
+    commands = [(-1)^i * 2.0^25 + command_amplitudes[i] * cos(angles[n,i] - command_phases[i])
+        for n in axes(angles, 1), i in eachindex(frequencies)]
+    responses = [(-1)^(i+1) * 2.0^24 + gains[i] * command_amplitudes[i] *
+        cos(angles[n,i] - command_phases[i] - phase_lags[i])
+        for n in axes(angles, 1), i in eachindex(frequencies)]
+    expected_ratios = gains .* cis.(-phase_lags)
+
+    # Direct mixing has finite-window DC leakage at these two carrier frequencies.
+    direct_ratios = [sum(responses[:, i] .* cis.(-angles[:, i])) /
+        sum(commands[:, i] .* cis.(-angles[:, i])) for i in eachindex(frequencies)]
+    @test all(abs.(direct_ratios .- expected_ratios) .> 0.2)
+
+    method = ModalDitherResponse(; command_amplitude_floor=0.05)
+    spec = ModalDitherResponseSpecification(frequencies, frame_times; sample_rate)
+    plan = @inferred prepare(method, spec)
+    inputs = ModalDitherResponseInputs(commands, responses)
+    result = @inferred process(plan, inputs)
+    # Quantization at the large offsets limits the accuracy of the input samples.
+    @test result.command_amplitudes ≈ command_amplitudes atol=3e-9
+    @test result.response_amplitudes ≈ gains .* command_amplitudes atol=3e-9
+    @test result.response_ratios ≈ expected_ratios atol=3e-9
+    @test result.gains ≈ gains atol=3e-9
+    @test result.phase_lags ≈ phase_lags atol=3e-9
+    @test result.valid == [true, true]
+
+    command_storage = zeros(2 * size(commands, 1), size(commands, 2))
+    response_storage = similar(command_storage)
+    command_view = @view command_storage[1:2:end, :]
+    response_view = @view response_storage[2:2:end, :]
+    command_view .= commands
+    response_view .= responses
+    view_inputs = ModalDitherResponseInputs(command_view, response_view)
+    reused = allocate_result(plan)
+    workspace = allocate_workspace(plan)
+    @test @inferred(process!(reused, workspace, plan, view_inputs)) === reused
+    @test reused.response_ratios == result.response_ratios
+    @test process!(reused, plan, view_inputs).phase_lags == result.phase_lags
+    @test fixture_process_allocation(reused, workspace, plan, inputs) == 0
+    @test fixture_process_allocation(reused, workspace, plan, view_inputs) == 0
+end
+
+@testset "modal dither FGA phase and amplitude convention" begin
+    samples = 0:23
+    periods = [8, 12]
+    sample_rate = 96.0
+    angles = [2π * (n % period) / period for n in samples, period in periods]
+    command_phases = [2.8, -2.8]
+    phase_lags = [0.7, -0.7]
+    commands = [0.5 + cos(angles[n,i] - command_phases[i])
+        for n in axes(angles, 1), i in eachindex(periods)]
+    responses = [1.0 + 0.75cos(angles[n,i] - command_phases[i] - phase_lags[i])
+        for n in axes(angles, 1), i in eachindex(periods)]
+
+    # FGA estimator.jl quadratures and subtraction sign for a unity
+    # calibration response and complete integer-period windows.
+    scale = 2 / length(samples)
+    fga_gains = Float64[]
+    fga_lags = Float64[]
+    for i in eachindex(periods)
+        command_cosine = scale * sum(commands[:, i] .* cos.(angles[:, i]))
+        command_sine = scale * sum(commands[:, i] .* sin.(angles[:, i]))
+        response_cosine = scale * sum(responses[:, i] .* cos.(angles[:, i]))
+        response_sine = scale * sum(responses[:, i] .* sin.(angles[:, i]))
+        push!(fga_gains, hypot(response_cosine, response_sine) /
+            hypot(command_cosine, command_sine))
+        phase = atan(response_sine, response_cosine) - atan(command_sine, command_cosine)
+        push!(fga_lags, rem2pi(phase, RoundNearest))
+    end
+    plan = prepare(
+        ModalDitherResponse(; command_amplitude_floor=0),
+        ModalDitherResponseSpecification(sample_rate ./ periods,
+            range(0; step=inv(sample_rate), length=length(samples)); sample_rate),
+    )
+    result = process(plan, ModalDitherResponseInputs(commands, responses))
+    @test result.gains ≈ fga_gains atol=1e-14
+    @test result.phase_lags ≈ fga_lags atol=1e-14
+    @test result.phase_lags ≈ phase_lags atol=1e-14
+    @test result.response_ratios ≈ fga_gains .* cis.(-fga_lags) atol=1e-14
+end
+
+@testset "modal dither window and observability checks" begin
+    method = ModalDitherResponse(; command_amplitude_floor=0.1)
+    sample_rate = 16.0
+    frame_times = collect(0:7) ./ sample_rate
+    spec(frequencies, times=frame_times; sample_rate=sample_rate) =
+        ModalDitherResponseSpecification(frequencies, times; sample_rate)
+
+    @test_throws ArgumentError ModalDitherResponse(; command_amplitude_floor=NaN)
+    @test_throws ArgumentError ModalDitherResponse(; command_amplitude_floor=-0.1)
+    @test_throws ArgumentError ModalDitherResponse(;
+        command_amplitude_floor=0.1, relative_rank_tolerance=0)
+    @test_throws ArgumentError prepare(method, spec([2.0], frame_times[1:2]))
+    @test_throws ArgumentError prepare(method, spec(Float64[]))
+    @test_throws ArgumentError prepare(method, spec([2.0]; sample_rate=Inf))
+    @test_throws ArgumentError prepare(method, spec([2.0]; sample_rate=17.0))
+    @test_throws ArgumentError prepare(method, spec([2.0], frame_times[[1, 2, 2, 4]]))
+    @test_throws ArgumentError prepare(method, spec([2.0], [NaN; frame_times[2:end]]))
+    rounded_times = Float32.(collect(0:63) ./ 1000)
+    rounded_plan = prepare(method, spec([70.0], rounded_times; sample_rate=1000))
+    exact_plan = prepare(method, spec([70.0], collect(0:63) ./ 1000; sample_rate=1000))
+    @test rounded_plan.projection == exact_plan.projection
+    rounded_times[16] += 0.00025f0
+    @test_throws ArgumentError prepare(method, spec([70.0], rounded_times; sample_rate=1000))
+    for frequency in (-1.0, 0.0, 1e-6, prevfloat(sample_rate / 2), sample_rate / 2, 10.0, NaN)
+        @test_throws ArgumentError prepare(method, spec([frequency]))
+    end
+
+    # The same carrier is admissible for isolated modal coordinates.
+    plan = prepare(method, spec(fill(2.0, 4)))
+    carrier = cospi.((0:7) ./ 4)
+    commands = hcat(carrier, fill(2.0^50, 8), 0.0625 .* carrier, carrier)
+    responses = hcat(2 .* carrier, carrier, carrier, ones(8))
+    inputs = ModalDitherResponseInputs(commands, responses)
+    product = process(plan, inputs)
+    workspace = allocate_workspace(plan)
+    @test product.valid == [true, false, false, false]
+    @test product.command_amplitudes ≈ [1.0, 0.0, 0.0625, 1.0] atol=1e-14
+    @test product.response_amplitudes ≈ [2.0, 1.0, 1.0, 0.0] atol=1e-14
+    @test product.response_ratios[2:end] == zeros(ComplexF64, 3)
+    @test product.gains[2:end] == zeros(3)
+    @test product.phase_lags[2:end] == zeros(3)
+
+    @test_throws DimensionMismatch process!(product, workspace, plan,
+        ModalDitherResponseInputs(commands[1:7, :], responses))
+    @test_throws ArgumentError process!(product, workspace, plan,
+        ModalDitherResponseInputs(NonOneBasedGainSensingMatrix(commands), responses))
+    @test_throws ArgumentError process!(product, product, plan, inputs)
+    invalid_responses = copy(responses)
+    invalid_responses[end, end] = Inf
+    @test_throws ArgumentError process!(product, workspace, plan,
+        ModalDitherResponseInputs(2 .* commands, invalid_responses))
+    @test product.command_amplitudes ≈ [1.0, 0.0, 0.0625, 1.0] atol=1e-14
+    @test product.valid == [true, false, false, false]
+end
+
 end

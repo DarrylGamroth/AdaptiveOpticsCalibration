@@ -5,7 +5,9 @@
 `AdaptiveOpticsCalibration.jl` owns reusable scientific algorithms that turn
 explicit calibration inputs into calibration products and numerical
 diagnostics. Its intended users are calibration developers, commissioning
-workflows, simulation validation, and RTC preparation tooling.
+workflows, soft-real-time calibration workers, simulation validation, and RTC
+preparation tooling. A calibration worker can submit one associated sample at
+a time or reduce a complete window while the fast control loop runs.
 
 ## Package boundary decisions
 
@@ -53,13 +55,15 @@ telemetry.
 
 ## Ownership model
 
-`FocalPlaneSharpening` applies this interface to four complete scalar CPU
+`FocalPlaneSharpening` applies this interface to scalar CPU
 calculations: a median-filtered weighted image objective, a supplied SPSA probe
 pair, a two-metric SPSA gradient, and an explicit-state Adam step. Radius,
 coefficient dimensions, SPSA direction/perturbation, and Adam parameters are
 explicit. Optimizer moments and iteration are supplied state and returned as
 independent next-state storage; plans and replaceable workspaces carry no
-history. Basis/order, homogeneous units, measurement association, command
+history. A modal amplitude scan also fits a quadratic to supplied amplitude/merit
+pairs and reports a bracketed maximum and fit residual. Basis/order,
+homogeneous units, measurement association, command
 conversion, acceptance, and equipment remain caller-owned. The reviewed
 [sharpening design](docs/DESIGN_SHARPENING.md) specifies the equations and
 source boundary. No accelerator or instrumental improvement is claimed.
@@ -107,8 +111,11 @@ Scientific types belong in domain modules. The initial expected modules are:
 - `PhaseRetrieval`
 - `Misregistration` (complete-data meta-sensitivity estimation)
 - `Tomography` (bounded numerical preparation only)
-- `OpticalGains` (complete-image modal sensitivity estimation)
+- `OpticalGains` (complete-image modal sensitivity and temporal dither response)
+- `ModalGainOptimization` (modal power spectra and delay-aware integrator gain selection)
 - `ReferenceFrames` (dark moments, lamp centroids, and pyramid references)
+- `ShackHartmann` (absolute pixel thresholds and weighted-centroid maps)
+- `AtmosphericParameters` (Fried parameter and outer scale from calibrated modal variances)
 
 Types select behavior through dispatch. Each family uses the common interface
 rather than defining algorithm-qualified preparation and execution verbs.
@@ -165,10 +172,41 @@ calculation. Its CPU reference contract begins with an explicit complete
 detector-frame image, finite complex focal-plane mask, and aligned modal basis;
 it publishes signed modal ratios, complex sensitivities, weak-mode flags, and
 flux diagnostics. AOS retains physical pyramid modulation, detector-frame
-formation, and plant truth. FGA retains its separate live dither-window
-demodulation, state, gain-update cadence, and application policy. This module
-does not normalize a basis, infer a physical camera, retain a history, or
-accept AOS/FGA objects.
+formation, and plant truth. A soft-real-time caller can also supply a complete
+regular window of realized modal commands and reconstructed responses. AOC
+fits an offset and both carrier quadratures for each signal and estimates their
+complex ratio. The caller supplies sampling times, mode order and exposure
+association. FGA owns its per-frame demodulation and gain-update cadence.
+
+The bounded optical-gain update uses an uncorrected complex dither response,
+a separately calibrated reference for the same probe path, and the previous
+correction multiplier. The output is a candidate multiplier. A rejected
+response holds the supplied correction. The worker owns the history between
+windows and decides whether to publish a candidate.
+
+`ShackHartmann` computes a threshold from the median peak intensity across
+active subapertures on one exposure. It derives a weight map for each active
+subaperture from its window-mean calibrated image. The consumer supplies
+the active ordering and keeps the mapping to the full RTC lenslet table.
+Thresholds retain calibrated pixel units and weight maps have unit peaks.
+A finite spot without positive signal gets uniform weights and a diagnostic.
+
+`AtmosphericParameters` fits the Fried parameter at a specified reference
+wavelength and profiles the outer scale over supplied variance templates.
+Reference templates and measured modal OPD variances must describe the same
+pupil, coordinates, normalization, and sensor response. The product includes
+the score and fitted Fried parameter at every trial outer scale, so a caller
+can see when several outer scales fit the data equally well.
+
+`DOCRIME` accepts single exposure-associated measurement and corrector vectors.
+Caller-owned state accumulates centered sums in Float64. A frozen snapshot can
+feed either existing solver while the caller acquires the next window. The
+open-loop input is the applied command in the declared coordinates. The
+closed-loop solve uses the associated command increment and declared positive
+gain. The SRT or FGA pairs samples, handles discontinuities and schedules the
+solve. Covariance updates cost O(mc + c²) for m measurements and c corrector
+coordinates. The [soft-real-time calibration plan](docs/SOFT_REALTIME_CALIBRATION.md)
+describes how to evaluate the worker cadence and scientific accuracy.
 
 `ReferenceFrames` owns bounded numerical processing of complete batches and
 explicit scientific state.
