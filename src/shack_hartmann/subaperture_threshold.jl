@@ -1,3 +1,4 @@
+# Thomas et al. (2006) compare thresholded centroid estimates. See docs/REFERENCES.md.
 """
     SubapertureThreshold(fraction)
 

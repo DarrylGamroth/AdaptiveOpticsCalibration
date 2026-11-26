@@ -1,5 +1,10 @@
 # AdaptiveOpticsCalibration.jl
 
+[![CI](https://github.com/DarrylGamroth/AdaptiveOpticsCalibration/actions/workflows/ci.yml/badge.svg)](https://github.com/DarrylGamroth/AdaptiveOpticsCalibration/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/DarrylGamroth/AdaptiveOpticsCalibration/branch/main/graph/badge.svg)](https://codecov.io/gh/DarrylGamroth/AdaptiveOpticsCalibration)
+
+[Algorithm references](docs/REFERENCES.md) · [Release provenance](docs/RELEASE_PROVENANCE.md)
+
 ## Installation
 
 Add the public release directly from Julia's package manager.
@@ -7,9 +12,11 @@ Add the public release directly from Julia's package manager.
 ```julia
 using Pkg
 Pkg.add(url="https://github.com/DarrylGamroth/AdaptiveOpticsCalibration.git",
-        rev="v0.17.6")
+        rev="v0.17.7")
 ```
 
+With the [DarrylGamrothRegistry](https://github.com/DarrylGamroth/PackageRegistry)
+installed, use `Pkg.add("AdaptiveOpticsCalibration")`.
 
 `AdaptiveOpticsCalibration.jl` is a transport-independent numerical toolbox
 for adaptive-optics calibration and commissioning.

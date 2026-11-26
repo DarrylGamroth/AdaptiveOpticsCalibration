@@ -1,3 +1,4 @@
+# Welch (1967) periodograms and Gendron and Léna (1994) modal gain optimization. See docs/REFERENCES.md.
 """
     ModalGainOptimization
 

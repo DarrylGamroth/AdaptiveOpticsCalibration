@@ -1,3 +1,4 @@
+# The weighted core merit follows the documented SPIDERS sharpening experiment. See docs/REFERENCES.md.
 """
     WeightedCoreIntensity(radius)
 

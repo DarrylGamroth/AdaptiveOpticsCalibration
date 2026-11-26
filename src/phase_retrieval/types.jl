@@ -1,3 +1,4 @@
+# Estimator inputs and outputs for the LIFT method of Meimon et al. (2010). See docs/REFERENCES.md.
 """
     AbstractLiFTForwardModel{T<:AbstractFloat}
 

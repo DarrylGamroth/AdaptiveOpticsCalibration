@@ -1,3 +1,4 @@
+# Dai (1995) gives the AO context for Karhunen–Loève modes. See docs/REFERENCES.md.
 """
     KarhunenLoeveBasis(; remove_piston=true, relative_rank_tolerance=nothing)
 

@@ -1,3 +1,4 @@
+# Thomas et al. (2006) compare weighted centroid estimates. See docs/REFERENCES.md.
 """
     WeightedCentroidMap(; gaussian_fwhm=0)
 

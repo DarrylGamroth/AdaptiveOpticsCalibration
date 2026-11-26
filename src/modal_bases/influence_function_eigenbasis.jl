@@ -1,3 +1,4 @@
+# This basis diagonalizes the sampled influence Gram matrix. See docs/REFERENCES.md.
 """Abstract method family for construction of a modal basis."""
 abstract type AbstractModalBasisMethod <: AbstractCalibrationMethod end
 

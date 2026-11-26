@@ -5,11 +5,15 @@ import AdaptiveOpticsCalibration: allocate_result, allocate_workspace
 using KernelAbstractions
 using LinearAlgebra
 using Test
+using ..PhaseRetrievalTests: FrozenLinearizedLiFTModel
 
 const IM = AdaptiveOpticsCalibration.InteractionMatrices
 const PB = AdaptiveOpticsCalibration.ProbeBases
 const DG = AdaptiveOpticsCalibration.Diagnostics
 const TM = AdaptiveOpticsCalibration.Tomography
+const PR = AdaptiveOpticsCalibration.PhaseRetrieval
+const KAE = Base.get_extension(AdaptiveOpticsCalibration,
+    :AdaptiveOpticsCalibrationKernelAbstractionsExt)
 
 @testset "von Kármán sampled scalar approximation error" begin
     extension_module = Base.get_extension(AdaptiveOpticsCalibration,
@@ -192,6 +196,127 @@ end
         method,
         KernelExecution(specification, CPU()),
     )
+end
+
+@testset "LiFT KA CPU photon-rate linearization" begin
+    reference = [2.0, 4.0, 6.0]
+    jacobian = [1.0 2.0; 2.0 -1.0; 0.0 1.0]
+    model = FrozenLinearizedLiFTModel(reference, jacobian)
+    counts = [6.0, 8.0, 10.0]
+    expected_rate = 2 .* counts
+    coefficients = [0.25, -0.5]
+    model_rate = reference + jacobian * coefficients
+    specification = PR.LiFTSpecification(model,
+        PR.LiFTExpectedCounts(2; quantum_efficiency=0.25); read_noise_std=0.2)
+    execution = KernelExecution(specification, CPU(); workgroup_size=2)
+    @test_throws ArgumentError prepare(PR.LiFT(solve_mode=PR.LiFTSolveQR()), execution)
+    plan = prepare(PR.LiFT(mode_indices=(2, 1)), execution)
+    result = allocate_result(plan)
+    workspace = allocate_workspace(plan)
+    inverse = workspace.inverse
+    kernels = plan.execution.kernels
+    @test plan.execution.mode_indices == [2, 1]
+
+    fill!(result.coefficients, 17)
+    @test_throws "finite nonnegative values" process!(result, workspace, plan,
+        PR.LiFTInputs([6.0, 8.0, NaN]))
+    @test_throws "initial_coefficients must contain only finite values" process!(
+        result, workspace, plan, PR.LiFTInputs(counts; initial_coefficients=[Inf, 0.0]))
+    @test result.coefficients == [17.0, 17.0]
+
+    kernels.copy_rate(inverse.observation_rate, counts,
+        plan.plan.observation_to_rate_scale, length(counts); ndrange=length(counts))
+    @test inverse.observation_rate == expected_rate
+    copyto!(inverse.coefficients, coefficients)
+    for jacobian_method in (PR.LiFTAnalyticJacobian(), PR.LiFTNumericalJacobian(0x1p-12))
+        @test KAE._lift_jacobian!(workspace, plan, jacobian_method) == jacobian[:, [2, 1]]
+        @test inverse.coefficients == coefficients
+    end
+
+    for (scaling, expected_scale) in (
+        (PR.LiFTTotalRateMatching(), sum(expected_rate) / sum(model_rate)),
+        (PR.LiFTPeakRateMatching(), maximum(expected_rate) / maximum(model_rate)),
+        (PR.LiFTPhysicalRatePreservation(), 1.0),
+    )
+        copyto!(inverse.model_rate, model_rate)
+        scale, objective = KAE._lift_model_scale!(workspace, plan, scaling)
+        @test scale ≈ expected_scale rtol=4eps(Float64)
+        @test objective ≈ sum(expected_scale .* model_rate) rtol=4eps(Float64)
+        @test inverse.model_rate ≈ expected_scale .* model_rate rtol=4eps(Float64)
+    end
+
+    kernels.residual(inverse.residual, inverse.observation_rate, inverse.model_rate,
+        length(counts); ndrange=length(counts))
+    KAE._lift_static_weights!(workspace, plan, PR.LiFTReadNoiseWeighting())
+    kernels.apply_weights(inverse.jacobian, inverse.residual, inverse.sqrt_weights,
+        size(jacobian)...; ndrange=size(jacobian))
+    @test inverse.jacobian ≈ jacobian[:, [2, 1]] ./ 0.4 rtol=4eps(Float64)
+    @test inverse.residual ≈ (expected_rate - model_rate) ./ 0.4 rtol=4eps(Float64)
+    @test KAE._lift_norm!(workspace, plan, [3e200, 0.0, -4e200]) ≈ 5e200
+    @test KAE._lift_norm!(workspace, plan, zeros(3)) == 0
+
+    update = [0.125, 0.25]
+    kernels.scatter_update(inverse.coefficients, update, plan.execution.mode_indices,
+        length(update); ndrange=length(update))
+    kernels.gather(result.coefficients, inverse.coefficients, plan.execution.mode_indices,
+        length(update); ndrange=length(update))
+    @test result.coefficients == coefficients[[2, 1]] + update
+end
+
+@testset "LiFT KA CPU count-domain variance and frozen weights" begin
+    model_rate = [2.0, 4.0, 6.0]
+    model = FrozenLinearizedLiFTModel(model_rate, ones(3, 1))
+    specification = PR.LiFTSpecification(model,
+        PR.LiFTExpectedCounts(2; quantum_efficiency=0.25); read_noise_std=0.2)
+    variance = [0.0, 0.5, 4.0]
+    first_model_variance = 2 .* model_rate .+ 0.4^2
+    for (weighting, first_variance, second_variance) in (
+        (PR.LiFTVarianceMapWeighting(variance), 4 .* variance, 4 .* variance),
+        (PR.LiFTInitialModelWeighting(), first_model_variance, first_model_variance),
+        (PR.LiFTIterativeModelWeighting(), first_model_variance, 4 .* model_rate .+ 0.4^2),
+    )
+        plan = prepare(PR.LiFT(weighting=weighting),
+            KernelExecution(specification, CPU(); workgroup_size=2))
+        workspace = allocate_workspace(plan)
+        copyto!(workspace.inverse.model_rate, model_rate)
+        KAE._lift_static_weights!(workspace, plan, plan.plan.weighting)
+        KAE._lift_update_weights!(workspace, plan, plan.plan.weighting, 1)
+        @test workspace.inverse.sqrt_weights ≈
+            1 ./ sqrt.(max.(first_variance, eps(Float64))) rtol=4eps(Float64)
+        workspace.inverse.model_rate .*= 2
+        KAE._lift_update_weights!(workspace, plan, plan.plan.weighting, 2)
+        @test workspace.inverse.sqrt_weights ≈
+            1 ./ sqrt.(max.(second_variance, eps(Float64))) rtol=4eps(Float64)
+    end
+end
+
+@testset "LiFT normal-equation and SVD steps on host storage" begin
+    jacobian = [1.0 2.0; 0.0 0.0; 0.0 0.0]
+    residual = [1.0, 2.0, 3.0]
+    model = FrozenLinearizedLiFTModel(fill(10.0, 3), jacobian)
+    plan = prepare(PR.LiFT(),
+        KernelExecution(PR.LiFTSpecification(model, PR.LiFTPhotonRate()), CPU()))
+    workspace = allocate_workspace(plan)
+    inverse = workspace.inverse
+    copyto!(inverse.normal, jacobian' * jacobian)
+    copyto!(inverse.jacobian, jacobian)
+    copyto!(inverse.residual, residual)
+    condition, load = KAE._lift_normal_metrics!(workspace, plan)
+    @test condition == 4.0
+    @test load == 2.5 * sqrt(eps(Float64))
+
+    regularization = 0.25
+    rhs = jacobian' * residual
+    expected = (jacobian' * jacobian + regularization * I) \ rhs
+    for damping in (PR.LiFTDampingNone(), PR.LiFTLevenbergMarquardt())
+        copyto!(inverse.rhs, rhs)
+        @test PR._solve_device_normal!(workspace, damping, regularization, regularization) ==
+            (regularization, false)
+        @test inverse.rhs ≈ expected rtol=2e-14
+    end
+    @test PR._device_svd_step!(inverse, svd(jacobian; full=false), regularization) ==
+        (regularization, true)
+    @test inverse.rhs ≈ expected rtol=2e-14
 end
 
 @testset "structured KA CPU kernels match scalar CPU" begin

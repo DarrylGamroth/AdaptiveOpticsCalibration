@@ -1,3 +1,4 @@
+# Penrose (1955) pseudoinverse and Tikhonov (1963) regularization. See docs/REFERENCES.md.
 """Abstract method family for compact-SVD inverse construction."""
 abstract type AbstractSVDInverse <: AbstractCalibrationMethod end
 

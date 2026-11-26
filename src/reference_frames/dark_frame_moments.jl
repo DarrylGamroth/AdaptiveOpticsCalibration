@@ -1,3 +1,4 @@
+# Online dark-frame mean and variance use Welford (1962). See docs/REFERENCES.md.
 """Select Float64 Welford mean and unbiased variance of a complete dark batch."""
 struct DarkFrameMoments <: AbstractCalibrationMethod end
 

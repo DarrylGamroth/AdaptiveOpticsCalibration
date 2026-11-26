@@ -1,3 +1,4 @@
+# Kingma and Ba (2015), Adam. See docs/REFERENCES.md.
 """
     AdamStep(alpha, beta1, beta2, epsilon)
 

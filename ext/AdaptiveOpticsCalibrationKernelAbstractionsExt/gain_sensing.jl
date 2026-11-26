@@ -289,6 +289,13 @@ function AOC.prepare(
     execution.backend isa KernelAbstractions.CPU && throw(ArgumentError(
         "gain sensing kernel execution requires an accelerator backend",
     ))
+    return GainSensingKernelPlan(method, execution)
+end
+
+function GainSensingKernelPlan(
+    method::OpticalGains.GainSensing,
+    execution::AOC.KernelExecution{<:OpticalGains.GainSensingSpecification},
+)
     specification = execution.specification
     Base.require_one_based_indexing(specification.mask, specification.basis,
         specification.reference_frame)

@@ -1,3 +1,4 @@
+# Spall (1992), simultaneous perturbation stochastic approximation. See docs/REFERENCES.md.
 """Prepare the pure supplied-direction SPSA pair `q ± cΔ`; no RNG or command conversion."""
 struct SPSAProbes <: AbstractCalibrationMethod end
 """Immutable coefficient count for SPSA probe generation."""

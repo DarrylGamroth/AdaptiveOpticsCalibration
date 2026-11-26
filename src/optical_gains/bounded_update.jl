@@ -1,3 +1,4 @@
+# Package-defined gain limits and acceptance follow a supplied temporal probe. See docs/REFERENCES.md.
 """
     OpticalGainUpdate(; integrator_gain, response_floor, reference_floor, phase_tolerance)
 

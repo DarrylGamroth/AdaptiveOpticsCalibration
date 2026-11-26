@@ -1,3 +1,4 @@
+# Winker (1991) motivates outer-scale fits from modal variances. See docs/REFERENCES.md.
 """
     ModalVarianceFit(; relative_rms_tolerance=0)
 

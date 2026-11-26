@@ -1,7 +1,7 @@
 name = "AdaptiveOpticsCalibration"
 uuid = "3c8b5851-926e-4ebb-af30-f8544b98d45f"
 authors = ["Darryl Gamroth <dgamroth@rubus.ca>"]
-version = "0.17.6"
+version = "0.17.7"
 
 [deps]
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
@@ -20,6 +20,7 @@ AdaptiveOpticsCalibrationKernelAbstractionsExt = "KernelAbstractions"
 
 [compat]
 AMDGPU = "2.7"
+Aqua = "0.8"
 CUDA = "6"
 FFTW = "1"
 KernelAbstractions = "0.9.42, 0.10"
@@ -30,9 +31,10 @@ TOML = "1"
 julia = "1.12"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [targets]
-test = ["KernelAbstractions", "Test", "TOML"]
+test = ["Aqua", "KernelAbstractions", "Test", "TOML"]

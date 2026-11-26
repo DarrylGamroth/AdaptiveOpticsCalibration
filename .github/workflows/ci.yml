@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Julia ${{ matrix.julia }} tests and Aqua
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia: ['1.12', '1.13']
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.julia }}
+      - uses: julia-actions/cache@v3
+      - name: Run package tests
+        env:
+          COVERAGE: ${{ matrix.julia == '1.13' }}
+        run: julia --startup-file=no --project=. -e 'using Pkg; Pkg.test(; coverage=parse(Bool, ENV["COVERAGE"]))'
+      - name: Collect source and extension line coverage
+        if: matrix.julia == '1.13'
+        uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: src,ext
+      - name: Require project line coverage above 90%
+        if: matrix.julia == '1.13'
+        run: python3 .github/check_coverage.py lcov.info
+      - name: Save LCOV report
+        if: matrix.julia == '1.13'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: lcov.info
+          if-no-files-found: error
+
+  coverage:
+    name: Upload coverage to Codecov
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage
+      - uses: codecov/codecov-action@v7
+        with:
+          files: lcov.info
+          disable_search: true
+          use_oidc: true
+          fail_ci_if_error: true

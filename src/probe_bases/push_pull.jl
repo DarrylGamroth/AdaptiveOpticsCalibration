@@ -1,3 +1,4 @@
+# Two-sided response probes with an AO Hadamard precedent in Meimon et al. (2015). See docs/REFERENCES.md.
 abstract type AbstractPushPullBasis <: AbstractCalibrationMethod end
 
 """Select positive/negative probing of an explicit modal command matrix."""

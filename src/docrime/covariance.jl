@@ -1,3 +1,4 @@
+# Lai et al. (2021), DO-CRIME, with Welford centered sums. See docs/REFERENCES.md.
 """Select Float64 online centered covariance reduction for DO-CRIME."""
 struct CenteredCovariance <: AbstractCalibrationMethod end
 

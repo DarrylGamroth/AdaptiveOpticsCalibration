@@ -3,6 +3,7 @@ module OpticalGainTests
 using AdaptiveOpticsCalibration
 import AdaptiveOpticsCalibration: allocate_result, allocate_workspace
 using AdaptiveOpticsCalibration.OpticalGains
+import KernelAbstractions
 using TOML
 using Test
 
@@ -101,6 +102,24 @@ end
     @test product.diagnostics.normalized_current_total_flux ≈
         FIXTURE["frames"]["current"]["normalized_total"] atol=1e-14
     @test fixture_process_allocation(product, workspace, plan, input) == 0
+end
+
+@testset "Portable gain-sensing kernels against the AOS reference" begin
+    ext = Base.get_extension(AdaptiveOpticsCalibration, :AdaptiveOpticsCalibrationKernelAbstractionsExt)
+    # Run the kernel pipeline with FFTW on host arrays using the same optical fixture as the scalar path.
+    plan = ext.GainSensingKernelPlan(GainSensing(FIXTURE["sensitivity_floor"]),
+        KernelExecution(fixture_specification(), KernelAbstractions.CPU(); workgroup_size=8))
+    input = GainSensingInputs(fixture_array(FIXTURE["frames"]["current"]))
+    result = process(plan, input)
+    @test plan.reference_impulse_response ≈ fixture_array(FIXTURE["impulse_responses"]["reference"]) rtol=1e-12 atol=1e-22
+    @test result.current_sensitivities ≈ fixture_sensitivities("current") rtol=1e-12 atol=1e-20
+    @test result.optical_gains ≈ FIXTURE["optical_gains"] rtol=1e-12
+    @test result.weak_mode_mask == FIXTURE["weak_mode_mask"]
+    @test result.diagnostics.current_total_flux ≈ sum(input.current_frame)
+
+    gains = copy(result.optical_gains)
+    @test_throws ArgumentError process!(result, plan, GainSensingInputs(zero(input.current_frame)))
+    @test result.optical_gains == gains
 end
 
 @testset "gain-sensing validation and transactional publication" begin

@@ -1,3 +1,4 @@
+# Lai et al. (2021), DO-CRIME. See docs/REFERENCES.md.
 """
     ConditioningCriteria(minimum_corrector_variance,
                          maximum_absolute_corrector_correlation,

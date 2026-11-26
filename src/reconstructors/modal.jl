@@ -1,3 +1,4 @@
+# Package-defined projected least squares, nulling and two-poke diagnostics. See docs/REFERENCES.md.
 """
     ModalReconstructor(owned_modes, fitted_modes; recovery_modes=Colon(), rtol)
 

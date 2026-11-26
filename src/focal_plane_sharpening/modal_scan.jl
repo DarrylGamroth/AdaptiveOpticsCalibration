@@ -1,3 +1,4 @@
+# Quadratic modal scans follow the documented SPIDERS sharpening experiment. See docs/REFERENCES.md.
 """
     ModalScan()
 

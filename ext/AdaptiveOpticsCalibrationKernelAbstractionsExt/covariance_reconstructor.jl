@@ -104,6 +104,12 @@ function AOC.prepare(
     execution.backend isa KernelAbstractions.CPU && throw(ArgumentError(
         "KernelExecution covariance reconstruction requires an accelerator backend",
     ))
+    return CovarianceReconstructorKernelPlan(execution)
+end
+
+function CovarianceReconstructorKernelPlan(
+    execution::AOC.KernelExecution{<:Tomography.CovarianceReconstructorSpecification{T}},
+) where {T<:AbstractFloat}
     (T === Float32 || T === Float64) || throw(ArgumentError(
         "accelerator covariance reconstruction supports Float32 and Float64",
     ))

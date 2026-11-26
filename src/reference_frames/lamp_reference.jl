@@ -1,3 +1,4 @@
+# Instrument-derived lamp-reference acceptance policy. See docs/REFERENCES.md.
 """
     LampReference(minimum_flux, adc_upper_rail)
 

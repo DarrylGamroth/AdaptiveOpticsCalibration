@@ -1,3 +1,4 @@
+# Centered streaming moments follow Welford (1962). See docs/REFERENCES.md.
 """Select Float64 moments of complete, equally weighted repeated response vectors."""
 struct RepeatedResponseMoments <: AbstractCalibrationMethod end
 

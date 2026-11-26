@@ -1,3 +1,4 @@
+# The signed probe design has a Hadamard AO precedent in Meimon et al. (2015). See docs/REFERENCES.md.
 abstract type AbstractStructuredPushPull <: AbstractCalibrationMethod end
 
 """

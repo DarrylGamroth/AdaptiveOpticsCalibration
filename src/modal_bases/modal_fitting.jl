@@ -1,3 +1,4 @@
+# Regularized least squares fits instrument-supplied mode coordinates. See docs/REFERENCES.md.
 """Select the pure sampled modal fitting diagnostic."""
 struct ModalFitting <: AbstractCalibrationMethod end
 

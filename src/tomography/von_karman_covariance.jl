@@ -1,3 +1,4 @@
+# Tokovinin (2002), finite outer-scale structure function. See docs/REFERENCES.md.
 """
     VonKarmanAutoCovariance()
 

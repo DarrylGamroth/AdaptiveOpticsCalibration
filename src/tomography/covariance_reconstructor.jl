@@ -1,3 +1,4 @@
+# Ellerbroek (1994), minimum-variance wavefront reconstruction. See docs/REFERENCES.md.
 """
     CovarianceReconstructor()
 

@@ -1,3 +1,4 @@
+# Instrument-derived pyramid reference and validity policy. See docs/REFERENCES.md.
 """
     PyramidReference(adc_upper_rail)
 

@@ -1,3 +1,4 @@
+# Ellerbroek (1994) supplies the AO covariance-weighted reconstruction context. See docs/REFERENCES.md.
 """Dimensions and floating-point representation of a reconstructor result."""
 struct ReconstructorSpecification{T<:AbstractFloat}
     measurement_count::Int

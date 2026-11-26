@@ -1,3 +1,4 @@
+# A two-sided finite difference estimates the interaction response. See docs/REFERENCES.md.
 """
     CentralDifference(amplitude)
 

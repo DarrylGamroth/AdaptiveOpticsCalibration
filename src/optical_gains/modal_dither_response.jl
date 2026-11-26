@@ -1,3 +1,4 @@
+# Temporal dither response uses harmonic least squares in the context of SPRINT. See docs/REFERENCES.md.
 """
     ModalDitherResponse(; command_amplitude_floor,
         relative_rank_tolerance=sqrt(eps(Float64)))

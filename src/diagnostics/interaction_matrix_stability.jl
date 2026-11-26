@@ -1,3 +1,4 @@
+# Package-defined interaction-matrix stability checks. See docs/REFERENCES.md.
 """
     StabilityStatus
 

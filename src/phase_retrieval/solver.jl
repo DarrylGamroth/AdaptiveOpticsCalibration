@@ -1,3 +1,4 @@
+# Meimon, Fusco and Mugnier (2010), LIFT. See docs/REFERENCES.md.
 @inline _domain_rate_scale(::LiFTPhotonRate, ::Type{T}) where {T<:AbstractFloat} = one(T)
 @inline _domain_rate_scale(domain::LiFTExpectedCounts, ::Type{T}) where {T<:AbstractFloat} =
     inv(T(domain.exposure_duration_s) * T(domain.quantum_efficiency))

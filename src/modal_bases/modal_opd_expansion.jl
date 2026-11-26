@@ -1,3 +1,4 @@
+# Linear superposition expands coefficients in the supplied OPD basis. See docs/REFERENCES.md.
 """Select pure expansion of an explicit sampled modal basis into OPD."""
 struct ModalOPDExpansion <: AbstractCalibrationMethod end
 

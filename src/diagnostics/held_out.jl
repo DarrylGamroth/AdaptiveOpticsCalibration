@@ -1,3 +1,4 @@
+# Package-defined held-out residual and pupil RMS metrics. See docs/REFERENCES.md.
 """
     HeldOutReconstruction()
 

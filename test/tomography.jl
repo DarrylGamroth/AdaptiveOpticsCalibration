@@ -3,6 +3,7 @@ module TomographyTests
 using AdaptiveOpticsCalibration
 import AdaptiveOpticsCalibration: allocate_result, allocate_workspace
 using AdaptiveOpticsCalibration.Tomography
+import KernelAbstractions
 using LinearAlgebra
 using SpecialFunctions
 using TOML
@@ -502,6 +503,27 @@ end
     @test_throws ArgumentError CovarianceReconstructorSpecification(0, 2, 2)
     @test_throws ArgumentError CovarianceReconstructorSpecification(2, 0, 2)
     @test_throws ArgumentError CovarianceReconstructorSpecification(2, 2, 0)
+end
+
+@testset "Portable covariance reconstructor kernels" begin
+    ext = Base.get_extension(AdaptiveOpticsCalibration, :AdaptiveOpticsCalibrationKernelAbstractionsExt)
+    plan = ext.CovarianceReconstructorKernelPlan(KernelExecution(
+        CovarianceReconstructorSpecification(3, 2, 1), KernelAbstractions.CPU(); workgroup_size=4))
+    projection = [1.0 0.0 0.5; 0.0 1.0 0.0]
+    phase = [1.0 0.2 0.3; 0.2 1.0 0.1; 0.3 0.1 0.9]
+    cross = [0.2 0.4 0.7]
+    # The second invertible system is indefinite and requires the LU fallback.
+    for (noise, use_lu) in (([0.2 0.0; 0.0 0.1], false), ([0.2 0.0; 0.0 -2.0], true))
+        input = CovarianceReconstructorInputs(projection, phase, cross, noise)
+        result = process(plan, input)
+        system = projection * phase * projection' + noise
+        @test result.matrix ≈ (cross * projection') / system
+        @test result.diagnostics.used_lu_fallback == use_lu
+        previous = copy(result.matrix)
+        bad = CovarianceReconstructorInputs(projection, phase, cross, [1.0 0.1; 0.5 1.0])
+        @test_throws ArgumentError process!(result, plan, bad)
+        @test result.matrix == previous
+    end
 end
 
 end

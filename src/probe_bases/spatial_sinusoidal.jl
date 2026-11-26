@@ -1,3 +1,4 @@
+# Conventional real Fourier basis evaluated in supplied pupil coordinates. See docs/REFERENCES.md.
 """
     SpatialSinusoidalPushPull(amplitudes; normalization, minimum_sampled_peak)
 

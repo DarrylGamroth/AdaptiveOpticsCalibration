@@ -1,3 +1,4 @@
+# Device implementation of the LIFT solve of Meimon, Fusco and Mugnier (2010). See docs/REFERENCES.md.
 # Shared GPU LiFT numerical policy. Vendor extensions retain storage conversion
 # and factorization dispatch; the scalar CPU solver keeps its separate path.
 function _try_device_normal!(inverse, regularization)

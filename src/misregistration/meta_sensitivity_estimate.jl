@@ -1,3 +1,4 @@
+# Héritier et al. (2021), SPRINT meta-sensitivity estimation. See docs/REFERENCES.md.
 """Select complete-data meta-sensitivity offset estimation."""
 struct MetaSensitivityEstimate <: AbstractCalibrationMethod end
 

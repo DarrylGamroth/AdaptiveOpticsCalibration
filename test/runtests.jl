@@ -1,6 +1,11 @@
 using AdaptiveOpticsCalibration
 import AdaptiveOpticsCalibration: allocate_result, allocate_workspace
 using Test
+using Aqua
+
+@testset "Aqua" begin
+    Aqua.test_all(AdaptiveOpticsCalibration)
+end
 
 include("structured_interaction_matrices.jl")
 include("probe_bases.jl")

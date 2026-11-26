@@ -1,3 +1,4 @@
+# Chambouleyron et al. (2020, 2021), pyramid optical gains and focal-plane sensing. See docs/REFERENCES.md.
 """
     GainSensing()
     GainSensing(sensitivity_floor)
