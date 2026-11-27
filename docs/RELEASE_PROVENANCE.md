@@ -20,10 +20,22 @@ public backend checks and numerical operations remain as in v0.17.6.
 validation history. References to papers credit scientific methods. Any future
 source or fixture import needs its own redistribution and notice review.
 
-The accelerator von Kármán covariance extension identifies Darryl Gamroth's
-[`kv56.jl` in AdaptiveOpticsSim at `b4d2da2`](https://github.com/DarrylGamroth/AdaptiveOpticsSim.jl/blob/b4d2da2/src/core/kv56.jl)
-as the source of its Bessel approximation. This release retains the adaptation
-already distributed under the calibration package's MIT notice.
+### Imported code and parity fixtures
+
+The package's MIT notice covers the distributed release. The historical
+source snapshots below predate a top-level license notice in their respective
+trees. The recorded source authorship and the maintainer's MIT release
+confirmation provide the provenance for the adaptations identified here.
+
+| Release material | Source evidence |
+| --- | --- |
+| Accelerator von Kármán Bessel approximation | The extension adapts [`kv56.jl` in AdaptiveOpticsSim at `b4d2da2`](https://github.com/DarrylGamroth/AdaptiveOpticsSim.jl/blob/b4d2da2/src/core/kv56.jl). Darryl Gamroth is the recorded author of the file at source commit `e5449f68`. |
+| Optical reconstruction and calibration | [The migration record](../MIGRATION.md) identifies the PipeWireAORTC extraction at `13de882`. The recorded source changes to the optical calibration and measurement files include Darryl Gamroth's commit `b0b51d3`. |
+| Numerical parity fixtures | The [TOML fixtures](../test/fixtures/) record their source revisions, upstream paths, and numerical layouts. AOS fixtures record model or calibration cases. JuliaFilterGraph fixtures retain the recorded upstream test inputs and expected numerical products. |
+
+The public v0.17.7 tree contains the package source, documentation, and
+numerical tests. Instrument optical prescriptions, vendor catalogs, and
+measured calibration bundles belong to the separate instrument repository.
 
 ## Registered history
 
