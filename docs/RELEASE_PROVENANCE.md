@@ -37,6 +37,12 @@ The public v0.17.7 tree contains the package source, documentation, and
 numerical tests. Instrument optical prescriptions, vendor catalogs, and
 measured calibration bundles belong to the separate instrument repository.
 
+The MIT notice covers the package distribution. Julia installs dependencies
+and binary artifacts separately under their own terms. For example, the
+native FFTW library is distributed under the
+[GNU GPL](https://www.fftw.org/faq/section1.html). An application bundle that
+redistributes dependencies must account for their licenses.
+
 ## Registered history
 
 The active registry starts at v0.17.5. The public Git tags v0.17.5 and v0.17.6
